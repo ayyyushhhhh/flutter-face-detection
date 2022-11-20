@@ -25,7 +25,7 @@ class _HomePageState extends State<HomePage> {
               GestureDetector(
                 onTap: () {
                   Navigator.push(context, MaterialPageRoute(builder: (context) {
-                    return RegistrationScreen();
+                    return CameraScreen();
                   }));
                 },
                 child: Container(

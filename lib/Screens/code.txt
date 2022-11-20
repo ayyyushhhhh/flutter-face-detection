@@ -1,0 +1,141 @@
+TextEditingController controller = TextEditingController();
+  late CameraController _cameraController;
+  bool flash = false;
+  bool isControllerInitialized = false;
+  // late FaceDetector _faceDetector;
+  // final MLService _mlService = MLService();
+  // List<Face> facesDetected = [];
+  late Future<void> _initializeControllerFuture;
+  Future initializeCamera() async {
+    await _cameraController.initialize();
+    isControllerInitialized = true;
+    _cameraController.setFlashMode(FlashMode.off);
+    setState(() {});
+  }
+
+  @override
+  void initState() {
+    _cameraController = CameraController(cameras![0], ResolutionPreset.high);
+    initializeCamera();
+    _initializeControllerFuture = _cameraController.initialize();
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    // Dispose of the controller when the widget is disposed.
+    _cameraController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        FocusScopeNode currentFocus = FocusScope.of(context);
+
+        if (!currentFocus.hasPrimaryFocus) {
+          currentFocus.unfocus();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            SizedBox(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height,
+                child: isControllerInitialized
+                    ? CameraPreview(_cameraController)
+                    : null),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: controller,
+                    decoration: const InputDecoration(
+                        fillColor: Colors.white, filled: true),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            try {
+                              // Ensure that the camera is initialized.
+                              await _initializeControllerFuture;
+
+                              // Attempt to take a picture and then get the location
+                              // where the image file is saved.
+                              final image =
+                                  await _cameraController.takePicture();
+                              if (!mounted) return;
+
+                              // If the picture was taken, display it on a new screen.
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => DisplayPictureScreen(
+                                    // Pass the automatically generated path to
+                                    // the DisplayPictureScreen widget.
+                                    imagePath: image.path,
+                                  ),
+                                ),
+                              );
+                            } catch (e) {
+                              // If an error occurs, log the error to the console.
+                              print(e);
+                            }
+                          },
+                          child: const Text(
+                            "Capture",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                          icon: Icon(
+                            flash ? Icons.flash_on : Icons.flash_off,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              flash = !flash;
+                            });
+                            flash
+                                ? _cameraController
+                                    .setFlashMode(FlashMode.torch)
+                                : _cameraController.setFlashMode(FlashMode.off);
+                          }),
+                    ],
+                  ),
+                  const SizedBox(
+                    height: 30,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DisplayPictureScreen extends StatelessWidget {
+  final String imagePath;
+
+  const DisplayPictureScreen({super.key, required this.imagePath});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Display the Picture')),
+      // The image is stored as a file on the device. Use the `Image.file`
+      // constructor with the given path to display the image.
+      body: Image.file(File(imagePath)),
+    );
+  }
